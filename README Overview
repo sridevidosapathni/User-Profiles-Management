@@ -1,0 +1,41 @@
+## 📋 Project Overview
+**User Profiles Management** is a responsive web application built using **React (Vite)** and **Tailwind CSS**.  
+It allows users to **create, edit, delete, search, and manage user profiles** with persistent data stored in the browser’s **localStorage** — all without requiring a backend server.
+
+This project demonstrates front-end CRUD operations, state management using React hooks, and local persistence using browser storage.
+
+---
+
+##  Features
+- **Add / Edit / Delete Profiles** – Manage user details such as name, email, and role.  
+-  **Search Functionality** – Instantl
+| Styling | Tailwind CSS |
+| Storage | Browser LocalStorage |
+| Language | JavaScript (ES6+) |
+
+---
+
+## 📂 Project Structure
+src/
+│
+├── App.jsx # Main component with all profile management logic
+├── index.css # Tailwind CSS base styles
+├── main.jsx # React entry point
+└── ...
+
+---
+
+##  How It Works---
+1. On the first load, the app displays **sample profiles**.
+2. All profile data is stored locally in the browser (`localStorage`).
+3. You can:
+   -  Add new profiles  
+   -  Edit existing ones  
+   -  Delete unwanted profiles  
+   -  Search through the list  
+4. Data updates instantly and persists even after reloading the page.
+
+---
+
+
+
