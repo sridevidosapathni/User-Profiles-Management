@@ -1,0 +1,352 @@
+// src/App.jsx
+import React, { useEffect, useState } from "react";
+
+const STORAGE_KEY = "user_profiles_v1";
+
+function uid() {
+  return Math.random().toString(36).slice(2, 9);
+}
+
+function sampleProfiles() {
+  return [
+    {
+      id: uid(),
+      firstName: "Sridevi",
+      lastName: "Dosapathni",
+      email: "sridevi.d@example.com",
+      role: "Frontend Engineer",
+      status: "active",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: uid(),
+      firstName: "Ravi",
+      lastName: "Kumar",
+      email: "ravi.k@example.com",
+      role: "UI/UX Designer",
+      status: "active",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: uid(),
+      firstName: "Anita",
+      lastName: "Sharma",
+      email: "anita.s@example.com",
+      role: "Backend Developer",
+      status: "disabled",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: uid(),
+      firstName: "Kiran",
+      lastName: "Patel",
+      email: "kiran.p@example.com",
+      role: "Project Manager",
+      status: "active",
+      createdAt: new Date().toISOString(),
+    },
+  ];
+}
+
+function useLocalProfiles() {
+  const [profiles, setProfiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Load from localStorage once
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    setTimeout(() => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) setProfiles(JSON.parse(raw));
+        else {
+          const seeds = sampleProfiles();
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(seeds));
+          setProfiles(seeds);
+        }
+      } catch (e) {
+        setError("Failed to load profiles.");
+      } finally {
+        setLoading(false);
+      }
+    }, 600); // simulate network delay
+  }, []);
+
+  function persist(next) {
+    setProfiles(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  }
+
+  const add = (p) => {
+    const next = [
+      { ...p, id: uid(), createdAt: new Date().toISOString() },
+      ...profiles,
+    ];
+    persist(next);
+  };
+
+  const update = (id, changes) => {
+    const next = profiles.map((p) => (p.id === id ? { ...p, ...changes } : p));
+    persist(next);
+  };
+
+  const remove = (id) => {
+    const next = profiles.filter((p) => p.id !== id);
+    persist(next);
+  };
+
+  const reload = () => {
+    setLoading(true);
+    setTimeout(() => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        setProfiles(raw ? JSON.parse(raw) : []);
+      } catch {
+        setError("Reload failed.");
+      } finally {
+        setLoading(false);
+      }
+    }, 400);
+  };
+
+  return { profiles, loading, error, add, update, remove, reload };
+}
+
+//  Profile Card Component
+function ProfileCard({ p, onEdit, onDelete }) {
+  return (
+    <div className="bg-white rounded-2xl shadow p-4 flex flex-col gap-3">
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+          <span className="text-sm font-medium">
+            {(p.firstName?.[0] || "") + (p.lastName?.[0] || "")}
+          </span>
+        </div>
+        <div className="flex-1">
+          <div className="text-lg font-semibold">
+            {p.firstName} {p.lastName}
+          </div>
+          <div className="text-sm text-gray-500">
+            {p.role} • {p.email}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => onEdit(p)} className="px-3 py-1 rounded-lg border">
+            Edit
+          </button>
+          <button
+            onClick={() => onDelete(p)}
+            className="px-3 py-1 rounded-lg border text-red-600"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+      <div className="text-xs text-gray-400">
+        Added: {new Date(p.createdAt).toLocaleDateString()}
+      </div>
+    </div>
+  );
+}
+
+//  Main App Component
+export default function App() {
+  const { profiles, loading, error, add, update, remove, reload } = useLocalProfiles();
+  const [query, setQuery] = useState("");
+  const [editing, setEditing] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+
+  function filtered() {
+    const q = query.trim().toLowerCase();
+    if (!q) return profiles;
+    return profiles.filter(
+      (p) =>
+        `${p.firstName} ${p.lastName}`.toLowerCase().includes(q) ||
+        (p.email || "").toLowerCase().includes(q)
+    );
+  }
+
+  function handleSave(data) {
+    if (editing) update(editing.id, data);
+    else add(data);
+    setShowForm(false);
+    setEditing(null);
+  }
+
+  function handleEdit(profile) {
+    setEditing(profile);
+    setShowForm(true);
+  }
+
+  function handleDelete(profile) {
+    if (confirm(`Delete ${profile.firstName} ${profile.lastName}?`))
+      remove(profile.id);
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <header className="max-w-6xl mx-auto mb-6">
+        <h1 className="text-2xl font-bold">User Profiles</h1>
+        <p className="text-sm text-gray-600">
+          Manage user profiles — responsive, local persistence.
+        </p>
+      </header>
+
+      <main className="max-w-6xl mx-auto">
+        <div className="flex gap-3 mb-4">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search profiles"
+            className="flex-1 p-2 border rounded-lg"
+          />
+          <button
+            onClick={() => {
+              setEditing(null);
+              setShowForm(true);
+            }}
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white"
+          >
+            Add profile
+          </button>
+          <button onClick={reload} className="px-3 py-2 rounded-lg border">
+            Reload
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded">{error}</div>
+        )}
+
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-36 bg-white rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered().map((p) => (
+              <ProfileCard key={p.id} p={p} onEdit={handleEdit} onDelete={handleDelete} />
+            ))}
+            {filtered().length === 0 && (
+              <div className="col-span-full text-center text-gray-500 p-8 bg-white rounded-2xl">
+                No profiles found
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Inline modal for Add/Edit form */}
+        {showForm && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-lg">
+              <ProfileForm
+                initial={editing}
+                onCancel={() => {
+                  setShowForm(false);
+                  setEditing(null);
+                }}
+                onSave={handleSave}
+              />
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+//  Profile Form Component
+function ProfileForm({ initial = null, onCancel, onSave }) {
+  const [firstName, setFirst] = useState(initial?.firstName || "");
+  const [lastName, setLast] = useState(initial?.lastName || "");
+  const [email, setEmail] = useState(initial?.email || "");
+  const [role, setRole] = useState(initial?.role || "");
+  const [errors, setErrors] = useState({});
+
+  function validate() {
+    const e = {};
+    if (!firstName.trim()) e.firstName = "First name required";
+    if (!email.match(/^\S+@\S+\.\S+$/)) e.email = "Valid email required";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
+  function submit(e) {
+    e.preventDefault();
+    if (!validate()) return;
+    onSave({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.trim(),
+      role: role.trim(),
+      status: "active",
+    });
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <label className="text-sm">First name</label>
+          <input
+            value={firstName}
+            onChange={(e) => setFirst(e.target.value)}
+            className="w-full p-2 border rounded"
+          />
+          {errors.firstName && (
+            <div className="text-xs text-red-600">{errors.firstName}</div>
+          )}
+        </div>
+        <div className="flex-1">
+          <label className="text-sm">Last name</label>
+          <input
+            value={lastName}
+            onChange={(e) => setLast(e.target.value)}
+            className="w-full p-2 border rounded"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-sm">Email</label>
+        <input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full p-2 border rounded"
+        />
+        {errors.email && (
+          <div className="text-xs text-red-600">{errors.email}</div>
+        )}
+      </div>
+
+      <div>
+        <label className="text-sm">Role</label>
+        <input
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          className="w-full p-2 border rounded"
+        />
+      </div>
+
+      <div className="flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 rounded border"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="px-4 py-2 rounded bg-blue-600 text-white"
+        >
+          Save
+        </button>
+      </div>
+    </form>
+  );
+}
